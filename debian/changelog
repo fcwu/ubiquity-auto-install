@@ -1,0 +1,5 @@
+ubiquity-auto-install (0.1) precise; urgency=low
+
+  * Initial Release.
+
+ -- Doro Wu <doro.wu@canonical.com>  Tue, 06 Aug 2013 03:07:31 -0400

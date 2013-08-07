@@ -1,0 +1,16 @@
+#!/bin/sh
+
+set -e
+
+case "$1" in
+    remove|purge)
+        #cp -av /usr/share/ubiquity-auto/upstart/*.conf /etc/init/
+        dpkg-divert --remove --package ubiquity-auto-install --rename \
+                    --divert /usr/bin/ubiquity-dm.distrib \
+                    /usr/bin/ubiquity-dm
+    ;;
+esac
+
+#DEBHELPER#
+
+exit 0

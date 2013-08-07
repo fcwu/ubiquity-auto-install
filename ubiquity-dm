@@ -1,0 +1,4 @@
+#!/bin/sh
+
+/usr/lib/ubiquity-auto/ubiquity-auto-install 2>&1 > /dev/null &
+/usr/bin/ubiquity-dm.distrib $*

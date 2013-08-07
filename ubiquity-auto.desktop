@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Ubiquity Automatically
+Exec=/usr/lib/ubiquity-auto/ubiquity-auto-install
+NoDisplay=true
+X-GNOME-Autostart-Phase=Application
+X-GNOME-Autostart-Notify=true
+X-GNOME-AutoRestart=true

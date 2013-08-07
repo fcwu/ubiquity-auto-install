@@ -1,0 +1,16 @@
+#!/bin/sh
+
+set -e
+
+case "$1" in
+    install|upgrade)
+        #cp -av /usr/share/ubiquity-auto/upstart/*.conf /etc/init/
+        dpkg-divert --package ubiquity-auto-install --add --rename \
+                    --divert /usr/bin/ubiquity-dm.distrib \
+                    /usr/bin/ubiquity-dm
+    ;;
+esac
+
+#DEBHELPER#
+
+exit 0

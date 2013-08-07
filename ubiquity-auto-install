@@ -1,0 +1,186 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+__version__ = '0.1'
+__all__ = ['UbiquityAuto']
+__author__ = 'DoroWu'
+__home_page__ = ''
+
+import subprocess
+import ldtp
+from time import sleep
+import logging
+import logging.handlers
+from datetime import datetime
+import os
+
+
+class UbiquityAuto(object):
+    def __init__(self, args, extra_args):
+        self._args = args
+        self._extra_args = extra_args
+
+    def run(self):
+        def click_continue():
+            try:
+                ldtp.click('frmInstall', 'btnContinue')
+                logging.info('click continue')
+            except:
+                return False
+            return True
+
+        def click_restart():
+            try:
+                ldtp.click('dlgInstallationComplete', 'btnRestartNow')
+                logging.info('click restart')
+            except:
+                return False
+            return True
+
+        def click_install_now():
+            try:
+                ldtp.click('frmInstall', 'btnInstallNow')
+                logging.info('click installnow')
+            except:
+                return False
+            return True
+
+        logging.info('Hello')
+
+        with open('/proc/cmdline') as f:
+            s = f.readline()
+            if s.find('ubiquity') < 0:
+                logging.info('Boot not with ubiquity command! Bye!')
+                return
+        try:
+            Command('gsettings set '
+                    'org.gnome.desktop.interface toolkit-accessibility '
+                    'true').run()
+        except GeneralError as e:
+            logging.critical('Set toolkit-accessibility: ' + str(e))
+            return
+
+        while not ldtp.guiexist('frmInstall'):
+            sleep(1)
+
+        logging.info('Detect Install frame')
+
+        while True:
+            click_continue()
+            click_install_now()
+            if click_restart():
+                logging.info('Restart! Bye!')
+                return
+            sleep(1)
+
+
+class Command(object):
+    """Simple subprocess. Popen wrapper to run shell commands and log their output
+    """
+    def __init__(self, command_str, silent=False, verbose=False):
+        self.command_str = command_str
+        self.silent = silent
+        self.verbose = verbose
+
+        self.process = None
+        self.stdout = None
+        self.stderr = None
+        self.time = None
+
+    def run(self):
+        """Execute shell command and return output and status
+        """
+        logging.debug('Executing: {0!r}...'.format(self.command_str))
+
+        self.process = subprocess.Popen(self.command_str,
+                                        shell=True,
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE)
+        start = datetime.now()
+        result = self.process.communicate()
+        end = datetime.now()
+        self.time = end - start
+
+        self.returncode = self.process.returncode
+        if self.returncode != 0 or self.verbose:
+            stdout, stderr = result
+            message = ['Output:'
+                       '- returncode:\n{0}'.format(self.returncode)]
+            if stdout:
+                if type(stdout) is bytes:
+                    stdout = stdout.decode()
+                message.append('- stdout:\n{0}'.format(stdout))
+            if stderr:
+                if type(stderr) is bytes:
+                    stderr = stderr.decode()
+                message.append('- stderr:\n{0}'.format(stderr))
+            if not self.silent:
+                logging.debug('\n'.join(message))
+
+            self.stdout = stdout
+            self.stderr = stderr
+
+        if self.returncode != 0:
+            raise GeneralError(self.returncode,
+                               '{0}: {1}'.format(self.command_str,
+                                                 self.stderr))
+
+        return self
+
+
+class GeneralError(Exception):
+    def __init__(self, code, msg='Unknown'):
+        self.code = code
+        self.msg = msg
+
+    def __str__(self):
+        return 'Error ({0}): {1}'.format(self.code, self.msg)
+
+
+class LoggingConfiguration(object):
+    @classmethod
+    def set(cls, log_level, log_filename, append):
+        """ Configure a rotating file logging
+        """
+        logger = logging.getLogger()
+        logger.setLevel(logging.DEBUG)
+
+        # Log to sys.stderr using log level passed through command line
+        if log_level != logging.NOTSET:
+            log_handler = logging.StreamHandler()
+            formatter = logging.Formatter(
+                            '%(asctime)s %(levelname)-8s '
+                            '%(message)s')
+            log_handler.setFormatter(formatter)
+            log_handler.setLevel(log_level)
+            logger.addHandler(log_handler)
+
+        # Log to rotating file using DEBUG log level
+        if log_filename:
+            log_handler = logging.handlers.RotatingFileHandler(
+                            log_filename,
+                            mode='a+',
+                            backupCount=3)
+            formatter = logging.Formatter('%(asctime)s %(levelname)-8s '
+                                          '%(message)s')
+            log_handler.setFormatter(formatter)
+            log_handler.setLevel(logging.DEBUG)
+            logger.addHandler(log_handler)
+
+            if not append:
+                # Create a new log file on every new
+                # (i.e. not scheduled) invocation
+                log_handler.doRollover()
+
+
+def main():
+    LoggingConfiguration.set(logging.DEBUG, os.path.expanduser('~/.ubiquity-auto.log'), False)
+
+    try:
+        UbiquityAuto(args=None, extra_args=None).run()
+    except KeyboardInterrupt:
+        logging.info('^c')
+
+
+if __name__ == '__main__':
+    main()
